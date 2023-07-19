@@ -1,0 +1,151 @@
+create table appleStore_description_combined AS
+
+select * from appleStore_description1
+
+union ALL
+
+select * from appleStore_description2
+
+union ALL
+
+select * from appleStore_description3
+
+union ALL
+
+select * from appleStore_description4
+
+--check the number of unique app in both tableAppleStore
+
+select count (DISTINCT id) as UniqueAppIDs
+from AppleStore
+
+select count (DISTINCT id) As UniqueAppIDs
+from appleStore_description_combined
+
+
+-- check for the missing values 
+
+select COUNT(*) as MissingValues
+from AppleStore
+where track_name is null or user_rating is null or prime_genre is NULL
+
+
+select COUNT(*) as MissingValues
+from appleStore_description_combined
+where app_desc is null
+
+
+-- The data set is quite clean, there is no missing values in this dataset.
+
+-- let's find numer of apps per genre
+ select prime_genre, count(*) as NumApps
+ from AppleStore
+ group by prime_genre
+ order by NumApps DESC
+ 
+ 
+ --get an overview of the apps rating
+ 
+select min(user_rating) as MinRating,
+        max(user_rating) as MaxRating,
+        avg(user_rating) as AvgRating
+from AppleStore
+
+-- get the distribution of app prices:
+
+SELECT
+    (price / 2) * 2 as PriceBinStart,
+    ((price / 2) *2) + 2 as PriceBinEnd, 
+    count(*) as NumApps
+from AppleStore
+
+group by PriceBinStart
+order by PriceBinStart
+
+** Data Analysis**
+
+-- determine if paid app has higher ratings or free apps:
+
+
+select CASE
+            when price > 0 then 'PAID'
+            else 'FREE'
+        End as App_Type,
+        avg(user_rating) as Avg_Rating
+from AppleStore
+group by App_Type
+
+-- check if apps with more supported language has higher ratings
+
+select case 
+            when lang_num < 10 then '<10 languages'
+            when lang_num between 10 and 30 then '10 - 30 languages'
+            else '>30 languages'
+        End as language_bucket,
+        avg(user_rating) as Avg_Rating
+from AppleStore
+group by language_bucket
+order by Avg_Rating DESC
+
+
+-- check genre with low rating
+
+select prime_genre,
+       avg(user_rating) as Avg_Rating
+from AppleStore
+group by prime_genre
+order by Avg_Rating ASC
+limit 10
+
+-- check if there is correlation between discription length and the user rating
+
+SELECT CASE
+            when length(b.app_desc) < 500 then 'short'
+            when length(b.app_desc) between 500 and 1000 then 'medium'
+            else 'long'
+        end as description_length_bucket,
+        avg(a.user_rating) as average_rating
+            
+
+from 
+     AppleStore as A
+join 
+     appleStore_description_combined as b
+on 
+    a.id = b.id
+group by description_length_bucket
+order by average_rating DESC
+
+
+-- check the top rated apps for each genre
+
+
+WITH RankedApps AS (
+    SELECT
+        prime_genre,
+        track_name,
+        user_rating,
+        RANK() OVER (PARTITION BY prime_genre ORDER BY user_rating DESC, rating_count_tot DESC) AS rank
+    FROM
+        AppleStore
+)
+SELECT
+    prime_genre,
+    track_name,
+    user_rating
+FROM
+    RankedApps
+WHERE
+    rank = 1;
+
+
+-- Final Recommendation:
+
+--KEY POINTS FROM THIS ANALYSIS:
+
+-- 1. PAID APPS HAVE BETTER RATINGS COMPARE TO FREE APPS.
+-- 2. APPS SUPPORTING BETWWEN 10 AND 30 LANGUAGES HAVE BETTER RATINGS, MEANS WE CAN ALSO TARGET THE WIDE AUDIENCE WORLD WIDE.
+-- 3. FINANCE AND BOOK APPS HAVE LOW RATINNGS.
+-- 4. APPS WITH LONGER DWSCRIPTION HAVE BETTER RATINGS.
+-- 5. FROM THIS ANALYSIS, THE HIGHEST RATING FOR APP ON AVERAGE IS 3.5, IF WE WANT TO STANDOUT IN MARKET A NEW APP SHOUGH AIM FOR AN AVERAGE RATING ABOVE 3.5
+-- 6. ALSO, GAMES AND ENTERTENMAIN HAVE A HIGH COMPETITION.
